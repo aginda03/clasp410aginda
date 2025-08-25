@@ -1,2 +1,2 @@
-# clasp410lastname
-Climate 410
+# clasp410Inda
+This repository contains assignments and projects for CLASP 410
