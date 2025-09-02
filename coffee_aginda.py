@@ -1,7 +1,13 @@
+#!/usr/bin/env python3
+'''
+Solve coffee problem (update later)
+
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Ambient temperature
+# Ambient temperatusre
 Tamb = 20.0  # °C
 k = 0.06     # cooling constant [1/min], adjust as needed
 
