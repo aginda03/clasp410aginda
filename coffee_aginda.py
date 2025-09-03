@@ -1,78 +1,101 @@
 #!/usr/bin/env python3
-'''
-Solve coffee problem (update later)
-
-'''
+"""
+Coffee cooling with Newton's law of cooling
+- Case 1: normal cooling 90 -> 60
+- Case 2: instant drop at start (90 -> 85), then cool to 60
+- Case 3: cool from 90 to 65, then instant drop to 60 at that time
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Ambient temperatusre
-Tamb = 20.0  # °C
-k = 0.06     # cooling constant [1/min], adjust as needed
+# Functions - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+def solve_temp(t, T_init, k=0.06, T_amb=20.0):
+    """
+    Temperature at time t using Newton's law of cooling:
+    T(t) = T_amb + (T_init - T_amb) * exp(-k t)
+    """
+    return T_amb + (T_init - T_amb) * np.exp(-k * t)
 
-# Time array for normal cooling phases
-t = np.linspace(0, 10, 500)  # may adjust later
+def solve_time(T_target, T_init, k, T_amb):
+    """
+    Time needed to go from T_init to T_target under Newton cooling:
+    t = -(1/k) * ln((T_target - T_amb)/(T_init - T_amb))
+    """
+    ratio = (T_target - T_amb) / (T_init - T_amb)
+    if ratio <= 0:
+        raise ValueError("Invalid temps: T_target must be between T_amb and T_init.")
+    return - (1.0 / k) * np.log(ratio)
 
-# --- Case 1: normal cooling ---
-T0_1 = 90.0
-Tend_1 = 60.0
-T1 = Tamb + (T0_1 - Tamb) * np.exp(-k * t)
-t_end_1 = - (1 / k) * np.log((Tend_1 - Tamb) / (T0_1 - Tamb))
-print(f"Case 1 reaches {Tend_1}°C at {t_end_1:.2f} min")
+# Paramters - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Tamb = 20.0   # ambient [°C]
+k = 0.06      # cooling constant [1/min]
 
-# --- Case 2: instant drop at start (90 → 85), then cool to 60 ---
-T0_2_actual = 85.0
-Tend_2 = 60.0
-T2 = Tamb + (T0_2_actual - Tamb) * np.exp(-k * t)
-t_end_2 = - (1 / k) * np.log((Tend_2 - Tamb) / (T0_2_actual - Tamb))
-print(f"Case 2 (drop to {T0_2_actual}°C) reaches {Tend_2}°C at {t_end_2:.2f} min")
+# Defining Each Case - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-t_case2 = np.insert(t, 0, 0)
-T_case2 = np.insert(T2, 0, 90.0)
+# Case 1: no cream, 90 -> 60 
+T0_1, Tend_1 = 90.0, 60.0
+t_end_1 = solve_time(Tend_1, T0_1, k=k, T_amb=Tamb)
 
-# --- Case 3: cool to 65, instant drop to 60 at end ---
-T0_3 = 90.0
-Tmid_3 = 65.0
-Tend_3_final = 60.0
+# Case 2: instant drop (cream) at start (90 -> 85), then 85 -> 60
+T0_2_actual, Tend_2 = 85.0, 60.0
+t_end_2 = solve_time(Tend_2, T0_2_actual, k=k, T_amb=Tamb)
 
-# Time to reach 65 °C
-t_mid_3 = - (1 / k) * np.log((Tmid_3 - Tamb) / (T0_3 - Tamb))
-print(f"Case 3 cools to {Tmid_3}°C at {t_mid_3:.2f} min, then instant drop to {Tend_3_final}°C")
+# Case 3: 90 -> 65 (then instant drop to 60 at that time)
+T0_3, Tmid_3, Tend_3_final = 90.0, 65.0, 60.0
+t_mid_3 = solve_time(Tmid_3, T0_3, k=k, T_amb=Tamb)
 
-# Cooling curve only until 65 °C
+# Master time axis sized to include the slowest event
+t_max = 1.1 * max(t_end_1, t_end_2, t_mid_3)
+t = np.linspace(0, t_max, 600)
+
+# Making each line - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Case 1: normal cooling
+T1 = solve_temp(t, T0_1, k=k, T_amb=Tamb)
+
+# Case 2: cool from 85 after an instant drop from 90 at t=0
+T2 = solve_temp(t, T0_2_actual, k=k, T_amb=Tamb)
+t_case2 = np.insert(t, 0, 0.0)       # prepend t=0
+T_case2 = np.insert(T2, 0, 90.0)     # prepend 90°C to show the instant drop
+
+# Case 3: cool until 65, then instant drop to 60 at t_mid_3
 t3_cooling = np.linspace(0, t_mid_3, 400)
-T3_cooling = Tamb + (T0_3 - Tamb) * np.exp(-k * t3_cooling)
+T3_cooling = solve_temp(t3_cooling, T0_3, k=k, T_amb=Tamb)
+t_case3 = np.append(t3_cooling, t_mid_3)          # add drop time again
+T_case3 = np.append(T3_cooling, Tend_3_final)     # instant drop to 60
 
-# Append instant drop
-t_case3 = np.append(t3_cooling, t_mid_3)
-T_case3 = np.append(T3_cooling, Tend_3_final)
-
-# --- Plotting ---
+# Plotting - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 plt.figure(figsize=(8, 5))
 
-plt.plot(t, T1, label=f"Case 1: No Cream")
-plt.plot(t_case2, T_case2, label=f"Case 2: Cream at Start")
-plt.plot(t_case3, T_case3, label=f"Case 3: Cream at End")
+line1, = plt.plot(t, T1, label="Case 1: No Cream")
+line2, = plt.plot(t_case2, T_case2, label="Case 2: Cream at Start")
+line3, = plt.plot(t_case3, T_case3, label="Case 3: Cream at End")
 
-# Mark end points
-plt.plot(t_end_1, Tend_1, 'o')
-plt.annotate(f"{Tend_1}°C @ {t_end_1:.1f} min", (t_end_1, Tend_1), xytext=(5, 5), textcoords="offset points")
+# Case 1
+plt.plot(t_end_1, Tend_1, 'o', color=line1.get_color())
+plt.vlines(t_end_1, Tamb, Tend_1, colors=line1.get_color(), linestyles='dotted')
+plt.text(t_end_1, Tamb - 1, f"{t_end_1:.1f} min", ha='center', va='top', color=line1.get_color())
 
-plt.plot(t_end_2, Tend_2, 'o')
-plt.annotate(f"{Tend_2}°C @ {t_end_2:.1f} min", (t_end_2, Tend_2), xytext=(5, 5), textcoords="offset points")
+# Case 2
+plt.plot(t_end_2, Tend_2, 'o', color=line2.get_color())
+plt.vlines(t_end_2, Tamb, Tend_2, colors=line2.get_color(), linestyles='dotted')
+plt.text(t_end_2, Tamb - 1, f"{t_end_2:.1f} min", ha='center', va='top', color=line2.get_color())
 
-plt.plot(t_mid_3, Tend_3_final, 'o')
-plt.annotate(f"{Tend_3_final}°C @ {t_mid_3:.1f} min", (t_mid_3, Tend_3_final), xytext=(5, 5), textcoords="offset points")
+# Case 3
+plt.plot(t_mid_3, Tend_3_final, 'o', color=line3.get_color())
+plt.vlines(t_mid_3, Tamb, Tend_3_final, colors=line3.get_color(), linestyles='dotted')
+plt.text(t_mid_3, Tamb - 1, f"{t_mid_3:.1f} min", ha='center', va='top', color=line3.get_color())
 
 # Ambient line
 plt.axhline(Tamb, color='gray', linestyle='--', linewidth=1)
 plt.text(0, Tamb + 0.5, f"Ambient = {Tamb}°C")
 
+# Graph Features
 plt.xlabel("Time [min]")
 plt.ylabel("Temperature [°C]")
-plt.title("Coffee Cooling – Newton's Law of Cooling (with Instant Drops)")
+plt.title("Coffee Cooling – Newton's Law of Cooling")
 plt.legend()
-plt.grid(True, alpha=0.3)
+plt.grid(True, alpha=0.25)
 plt.tight_layout()
 plt.show()
+
