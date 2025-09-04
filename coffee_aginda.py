@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Functions - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-def solve_temp(t, T_init, k=0.06, T_amb=20.0):
+def solve_temp(t, T_init, k, T_amb):
     """
     Temperature at time t using Newton's law of cooling:
     T(t) = T_amb + (T_init - T_amb) * exp(-k t)
@@ -27,6 +27,20 @@ def solve_time(T_target, T_init, k, T_amb):
         raise ValueError("Invalid temps: T_target must be between T_amb and T_init.")
     return - (1.0 / k) * np.log(ratio)
 
+def verify_script():
+    '''
+    verify that our implementation is correct
+    by checking the time it takes to cool from 110°C to 95°C in 10.76 minutes
+    '''
+    t_real = 60 * 10.76
+    k = np.log(95.0/110./-120.0) / t_real
+    t_code = solve_time(120, T_init = 180, T_amb = 70, k=k)
+
+    print("Target Solution is: ", t_real)
+    print("Numerical Solution is: ", t_code)
+    print("Difference is: ", t_real-t_code)
+
+
 # Paramters - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Tamb = 20.0   # ambient [°C]
 k = 0.06      # cooling constant [1/min]
@@ -42,7 +56,7 @@ T0_2_actual, Tend_2 = 85.0, 60.0
 t_end_2 = solve_time(Tend_2, T0_2_actual, k=k, T_amb=Tamb)
 
 # Case 3: 90 -> 65 (then instant drop to 60 at that time)
-T0_3, Tmid_3, Tend_3_final = 90.0, 65.0, 60.0
+T0_3, Tmid_3, Tend_3 = 90.0, 65.0, 60.0
 t_mid_3 = solve_time(Tmid_3, T0_3, k=k, T_amb=Tamb)
 
 # Master time axis sized to include the slowest event
@@ -62,7 +76,7 @@ T_case2 = np.insert(T2, 0, 90.0)     # prepend 90°C to show the instant drop
 t3_cooling = np.linspace(0, t_mid_3, 400)
 T3_cooling = solve_temp(t3_cooling, T0_3, k=k, T_amb=Tamb)
 t_case3 = np.append(t3_cooling, t_mid_3)          # add drop time again
-T_case3 = np.append(T3_cooling, Tend_3_final)     # instant drop to 60
+T_case3 = np.append(T3_cooling, Tend_3)     # instant drop to 60
 
 # Plotting - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 plt.figure(figsize=(8, 5))
@@ -82,8 +96,8 @@ plt.vlines(t_end_2, Tamb, Tend_2, colors=line2.get_color(), linestyles='dotted')
 plt.text(t_end_2, Tamb - 1, f"{t_end_2:.1f} min", ha='center', va='top', color=line2.get_color())
 
 # Case 3
-plt.plot(t_mid_3, Tend_3_final, 'o', color=line3.get_color())
-plt.vlines(t_mid_3, Tamb, Tend_3_final, colors=line3.get_color(), linestyles='dotted')
+plt.plot(t_mid_3, Tend_3, 'o', color=line3.get_color())
+plt.vlines(t_mid_3, Tamb, Tend_3, colors=line3.get_color(), linestyles='dotted')
 plt.text(t_mid_3, Tamb - 1, f"{t_mid_3:.1f} min", ha='center', va='top', color=line3.get_color())
 
 # Ambient line
