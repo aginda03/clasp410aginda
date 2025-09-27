@@ -21,10 +21,27 @@ for i in range(x.size - 1):
 
 # easy way
 fwd_diff = (sinx[1:] - sinx[:-1])/dx
-back_diff = (sinx[:-1] - sinx[:-2])/dx
+back_diff = (sinx[1:] - sinx[:-1])/dx
+cnt_diff = (sinx[2:] - sinx[0:-2])/(2*dx)
 
 plt.plot(x, cosx, label=r'Analytical Derivitve of $\sin{x}$')
 plt.plot(x[:-1], fwd_diff, label='Forward Difference')
 plt.plot(x[1:], back_diff, label='Backward Difference')
+plt.plot(x[1:-1], cnt_diff, label='Centered Difference')
 plt.legend(loc='best')
-plt.show
+plt.show()
+
+dxs = [2**(-n) for n in range(20)]
+err_fwd, err_cnt = [], []
+for dx in dxs:
+
+
+    (sinx[1:] - sinx[:-1])/dx
+    cnt_diff = (sinx[2:] - sinx[0:-2])/(2*dx)
+
+    err_fwd.append(np.abs(fwd_diff[-1] - np.cos(x[-1])))
+    err_cnt.append(np.abs(cnt_diff[-1] - np.cos(x[-1])))
+
+    fig,ax = plt.subplots(1,1)
+    ax.plot(dxs, err_fwd, '.', label='Forward Diff Error')
+    ax.plot(dxs, err_cnt, '.', label='Central Diff Error')
