@@ -117,6 +117,12 @@ def solve_rk8(func, N1_init=0.3, N2_init=0.6, dT=10, t_final=100.0, a=1, b=2, c=
 
 ## LAB QUESTIONS 
 
+'''
+for all of these functions, run with 
+
+%run Lab2.py
+function_name()
+'''
 
 ## Question 1
 
