@@ -11,7 +11,11 @@ It also runs warming scenarios to see how rising surface temperatures affect act
 import numpy as np
 import matplotlib.pyplot as plt
 
-# bunch of fucntions before actual questions, question numbers labeled below
+# Sets solver functions up before answering questions
+# Does not have a "to replicate my results:" section, possibly in lab report.
+# Heat solvers are separated into Dirichlet and Neumann boundary conditions
+# Might be compressible? This code is very chunky, would be nice to have less.
+
 
 def solve_heat_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     """
@@ -39,7 +43,7 @@ def solve_heat_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     t : ndarray
         Time grid (s).
     """
-       # check that dt isn’t too big or it’ll go unstable
+    # Check that dt isn’t too big or it’ll go unstable
     dt_max = dx**2 / (2 * c2)
     if dt > dt_max:
         raise ValueError(f"peligroso: dt {dt} must be <= dt_max {dt_max}")
@@ -64,7 +68,6 @@ def solve_heat_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
         U[M-1, j+1] = 0
 
     return U, x, t
-
 
 
 def solve_heat_neumann(xstop=1, tstop=0.2, dx=0.2, dt=0.02, c2=1):
@@ -93,7 +96,7 @@ def solve_heat_neumann(xstop=1, tstop=0.2, dx=0.2, dt=0.02, c2=1):
     t : ndarray
         Time grid (s).
     """
-        # check time step size for stability
+    # Check time step size for stability
     dt_max = dx**2 / (2 * c2)
     if dt > dt_max:
         raise ValueError(f"peligroso: dt {dt} must be <= dt_max {dt_max}")
@@ -117,7 +120,6 @@ def solve_heat_neumann(xstop=1, tstop=0.2, dx=0.2, dt=0.02, c2=1):
         U[M-1, j+1] = U[M-2, j+1]   # right end: zero gradient
 
     return U, x, t
-
 
 
 def plot_heatsolve_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
@@ -147,8 +149,6 @@ def plot_heatsolve_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     # clean layout and show it
     plt.tight_layout()
     plt.show()
-
-
 
 
 def plot_heatsolve_neumann(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
@@ -197,6 +197,8 @@ print("Energy change:", energy[-1] - energy[0])
 
 # ==========================================================
 # Homework N-D
+
+
 def plot_comparison(dx=0.02, dt=0.0002, xstop=1, tstop=0.2, c2=1):
     """
     Runs both solvers (Dirichlet + Neumann) and compares them side by side.
@@ -229,29 +231,35 @@ def plot_comparison(dx=0.02, dt=0.0002, xstop=1, tstop=0.2, c2=1):
     axs[0].set_xlabel("Time (s)")
     axs[0].set_ylabel("Position (m)")
 
-    im2 = axs[1].pcolor(T, X, U_neu.T, cmap="inferno", vmin=vmin, vmax=vmax, shading="auto")
+    im2 = axs[1].pcolor(T, X, U_neu.T, cmap="inferno", vmin=vmin, vmax=vmax, 
+                        shading="auto")
     axs[1].set_title("Neumann (Insulated Ends)")
     axs[1].set_xlabel("Time (s)")
     axs[1].set_ylabel("Position (m)")
 
     # adjust layout and colorbar
     plt.subplots_adjust(bottom=0.2, top=0.85, wspace=0.25)
-    cbar = fig.colorbar(im2, ax=axs, orientation="horizontal", fraction=0.05, pad=0.1)
+    cbar = fig.colorbar(im2, ax=axs, orientation="horizontal", fraction=0.05, 
+                        pad=0.1)
     cbar.set_label("Temperature (°C)")
 
     # add a main title and show it
-    fig.suptitle("Heat Equation: Dirichlet vs Neumann Boundary Conditions", y=0.98, fontsize=12)
+    fig.suptitle("Heat Equation: Dirichlet vs Neumann Boundary Conditions", 
+                 y=0.98, fontsize=12)
     plt.show()
 
 
 '''
-With Dirichlet conditions, the wire ends stay at 0°C, so heat flows out until the whole wire cools down.
-With Neumann conditions, the ends are insulated, meaning no heat escapes and the wire slowly evens out but stays warm overall.
-The Neumann case represents a wire with insulated ends where there’s no heat transfer to the surroundings.
+With Dirichlet conditions, the wire ends stay at 0°C, so heat flows out until
+the whole wire cools down. With Neumann conditions, the ends are insulated,
+meaning no heat escapes and the wire slowly evens out but stays warm overall.
+The Neumann case represents a wire with insulated ends where there’s no heat
+transfer to the surroundings.
 '''
 # ==========================================================
 
 # QUESTION 1: Validation of Heat Solver
+
 
 def validate_heat_solver():
     """
@@ -271,7 +279,8 @@ def validate_heat_solver():
     """
     
         # solve the validation case using the Dirichlet solver
-    U_valid, x_valid, t_valid = solve_heat_dirichlet( xstop=1,tstop=0.2,dx=0.2, dt=0.02,c2=1)
+    U_valid, x_valid, t_valid = solve_heat_dirichlet(xstop=1, tstop=0.2, 
+                                                     dx=0.2, dt=0.02, c2=1)
 
     # print a chunk of the result table to compare with the lab handout
     print("\nValidation Table (approx values):")
@@ -286,7 +295,8 @@ def validate_heat_solver():
     # make a color plot to see how heat spreads over time
     fig, ax = plt.subplots(figsize=(6, 4))
     T, X = np.meshgrid(t_valid, x_valid, indexing="ij")
-    c = ax.pcolor(T, X, U_valid.T, cmap="inferno", vmin=0, vmax=1, shading="auto")
+    c = ax.pcolor(T, X, U_valid.T, cmap="inferno", vmin=0, vmax=1, 
+                  shading="auto")
 
     # add colorbar and axis labels for clarity
     cbar = fig.colorbar(c, ax=ax, orientation="horizontal", pad=0.15)
@@ -303,7 +313,6 @@ def validate_heat_solver():
     return U_valid, x_valid, t_valid
 
 
-
 def compare_to_reference():
     """
     Compares the validation output to the given reference dataset and
@@ -316,6 +325,8 @@ def compare_to_reference():
     """
 
     # import the reference solution we’re comparing against
+    # Concern here - if saved as a library,
+    # install details need to be outlined in this file
     from test_solution import sol10p3
 
     # run the solver validation automatically
@@ -350,15 +361,14 @@ def compare_to_reference():
     plt.tight_layout()
     plt.show()
 
-
-
-
 # QUESTION 2: Kangerlussuaq Permafrost Model
 
-
 # ---- Surface temperature function ----
+
+
 t_kanger = np.array([-19.7, -21.0, -17., -8.4, 2.3, 8.4,
                      10.7, 8.5, 3.1, -6.0, -12.0, -16.9])
+
 
 def temp_kanger(t_days):
     """
@@ -434,7 +444,6 @@ def solve_permafrost(xstop=100, years=200, dx=0.5, dt_days=0.5, c2=0.25e-6):
     return U, x, t
 
 
-
 def run_permafrost(show_plots=True, years=200):
     """
     Runs the permafrost model and optionally plots results (100 m soil).
@@ -461,8 +470,9 @@ def run_permafrost(show_plots=True, years=200):
 
         run with run_permafrost()
     """
-        # run the permafrost simulation
-    U_p, x_p, t_p = solve_permafrost(xstop=100, years=years, dx=0.5, dt_days=0.5)
+    # run the permafrost simulation
+    U_p, x_p, t_p = solve_permafrost(xstop=100, years=years, dx=0.5, 
+                                     dt_days=0.5)
 
     # get data from the final simulated year
     loc = int(-365 / 0.5)  # last 365 days (since dt=0.5 days)
@@ -491,17 +501,18 @@ def run_permafrost(show_plots=True, years=200):
     print(f"Temperature range at 100 m depth: {summer[-1]:.2f} to {winter[-1]:.2f} °C")
     print("====================================")
 
-
-
-      # make the plots if the flag is on 
+    # make the plots if the flag is on 
     if show_plots:
         from matplotlib.colors import TwoSlopeNorm
 
         # first plot shows how temperature changes through the ground over time
-        # x-axis is time in years, y-axis is depth (0 m = surface, 100 m = deep soil)
+        # x-axis is time in years, y-axis is depth
+        # (0 m = surface, 100 m = deep soil)
         # color shows temperature, where red is warmer and blue is colder
         fig, ax = plt.subplots(figsize=(7, 4))
-        T_yrs, X_m = np.meshgrid(t_p / 365, x_p, indexing="ij")  # convert time from days to years
+
+        # convert time from days to years
+        T_yrs, X_m = np.meshgrid(t_p / 365, x_p, indexing="ij")
 
         # center the color map around 0°C so freezing is easy to see
         norm_full = TwoSlopeNorm(vcenter=0, vmin=-6, vmax=6)
@@ -520,7 +531,9 @@ def run_permafrost(show_plots=True, years=200):
         plt.show()
 
         # second plot does basically the same thing but zooms in near freezing
-        # this helps visualize where the soil thaws and freezes over time NOTE: just used the first in the report, ended up just changing limits there
+        # this helps visualize where the soil thaws and freezes over time
+        # NOTE: just used the first in the report, 
+        # ended up just changing limits there
         fig, ax_zoom = plt.subplots(figsize=(7, 4))
         norm = TwoSlopeNorm(vcenter=0, vmin=-6, vmax=6)
         c_zoom = ax_zoom.pcolormesh(T_yrs, X_m, U_p.T, cmap="coolwarm",
@@ -540,9 +553,11 @@ def run_permafrost(show_plots=True, years=200):
         plt.tight_layout()
         plt.show()
 
-        # third plot shows temperature vs. depth for just the final simulated year
+        # third plot shows temperature vs. depth
+        # for just the final simulated year
         # summer = red line, winter = blue line
-        # the gap between them near the surface is the active layer that freezes/thaws
+        # the gap between them near the surface
+        # is the active layer that freezes/thaws
         fig, ax2 = plt.subplots(figsize=(5, 6))
         ax2.plot(summer, x_p, label="Summer", color="red")
         ax2.plot(winter, x_p, label="Winter", color="blue")
