@@ -580,16 +580,10 @@ def run_permafrost(show_plots=True, years=200):
     return U_p, x_p, t_p, active_depth, permafrost_base
 
 
+# QUESTION 3: Global Warming Scenarios
 
-       
-       
-
-
-
-
-# # QUESTION 3: Global Warming Scenarios
-
-def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, show_plots=True):
+def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, 
+                          show_plots=True):
     """
     Runs the permafrost sim multiple times under different warming offsets.
 
@@ -609,15 +603,17 @@ def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, show_plot
 
         run with run_warming_scenarios()
     """
-        # list to store all the simulation results
+    # list to store all the simulation results
     results = []
 
     # loop through each temperature increase we want to test
     for dT in temp_shifts:
-        # make a new version of the surface temperature function that’s slightly warmer
+        # make a new version of the surface temperature 
+        # function that’s slightly warmer
         def temp_kanger_shifted(t_days):
             t_amp = (t_kanger - t_kanger.mean()).max()
-            return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) + t_kanger.mean() + dT
+            return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) + \
+                t_kanger.mean() + dT
 
         # temporarily replace the old surface function with the shifted one
         global temp_kanger
@@ -626,12 +622,13 @@ def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, show_plot
 
         # run the permafrost simulation for this warming level (no plots yet)
         print(f"\n=== Running simulation with +{dT:.1f} °C surface warming ===")
-        U_p, x_p, t_p, active, base = run_permafrost(show_plots=False, years=years)
+        U_p, x_p, t_p, active, base = run_permafrost(show_plots=False, 
+                                                     years=years)
 
         # store the results so we can print them all together later
         results.append((dT, active, base))
 
-        # restore the original surface temp function so the next run starts clean
+        # restore the original surface temp function so next run starts clean
         temp_kanger = original_temp_kanger
 
     # print out a nice summary table comparing all the runs
@@ -642,23 +639,26 @@ def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, show_plot
         print(f"{dT:8.1f} | {active:17.2f} | {base:21.2f}")
     print("===========================================")
 
-    # make a plot comparing the summer temperature profiles under different warming cases
+    # make a plot comparing the summer temperature profiles 
+    # under different warming cases
     if show_plots:
         colors = ["gold", "orange", "red", "darkred"]
         fig, ax = plt.subplots(figsize=(5, 6))
 
         # loop through each scenario and plot the final-year summer profile
         for (dT, _, _), color in zip(results, colors):
-            # re-create the shifted surface function for this temperature offset
+            # re-create the shifted surface function for new temperature offset
             def temp_kanger_shifted(t_days):
                 t_amp = (t_kanger - t_kanger.mean()).max()
-                return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) + t_kanger.mean() + dT
+                return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) \
+                    + t_kanger.mean() + dT
             temp_kanger = temp_kanger_shifted
 
             # run solver again to get temperature field
             U_p, x_p, t_p = solve_permafrost(years=years)
 
-            # take only the final year to get the summer and winter temperature ranges
+            # take only the final year to get the 
+            # summer and winter temperature ranges
             loc = int(-365 / 0.5)
             winter = U_p[:, loc:].min(axis=1)
             summer = U_p[:, loc:].max(axis=1)
