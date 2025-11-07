@@ -404,7 +404,6 @@ def run_permafrost(show_plots=True, years=200):
     c2 = 0.25e-6  # (m²/s)
 
     # run the permafrost simulation
-    # with temporal units of days instead of default seconds
     U_p, x_p, t_p = solve_heat(func0=permafrost0, funclb=temp_geothermal,
                                funcub=temp_kanger, xstop=100, tstop=tstop,
                                dx=0.5, dt=dt, c2=c2)
