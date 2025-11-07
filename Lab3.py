@@ -343,7 +343,7 @@ t_kanger = np.array([-19.7, -21.0, -17., -8.4, 2.3, 8.4,
                      10.7, 8.5, 3.1, -6.0, -12.0, -16.9])
 
 
-def temp_kanger(t_days):
+def temp_kanger(t_secs):
     """
     Gives Kangerlussuaq’s surface temperature (°C) for a given time in days, gets called in the permafrost solver.
 
@@ -357,11 +357,14 @@ def temp_kanger(t_days):
     temps : ndarray
         Surface temp values (°C).
     """
+    # convert from seconds input into day of the year
+    t_days = t_secs / Sec_per_day % 365
+
     # find the amplitude of the yearly temp swing (how much it varies)
     t_amp = (t_kanger - t_kanger.mean()).max()
 
     # make a smooth sine wave to model yearly temperature change
-    return t_amp * np.sin(np.pi / 182.5 * t_days - np.pi / 2) + t_kanger.mean()
+    return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) + t_kanger.mean()
 
 
 # Create initial conditions for permafrost (uniformly 0 Celsius)
@@ -542,7 +545,8 @@ def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200,
     for dT in temp_shifts:
         # make a new version of the surface temperature 
         # function that’s slightly warmer
-        def temp_kanger_shifted(t_days):
+        def temp_kanger_shifted(t_secs):
+            t_days = t_secs / Sec_per_day % 365
             t_amp = (t_kanger - t_kanger.mean()).max()
             return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) + \
                 t_kanger.mean() + dT
@@ -584,7 +588,8 @@ def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200,
         # loop through each scenario and plot the final-year summer profile
         for (dT, _, _), color in zip(results, colors):
             # re-create the shifted surface function for new temperature offset
-            def temp_kanger_shifted(t_days):
+            def temp_kanger_shifted(t_secs):
+                t_days = t_secs / Sec_per_day % 365
                 t_amp = (t_kanger - t_kanger.mean()).max()
                 return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) \
                     + t_kanger.mean() + dT
