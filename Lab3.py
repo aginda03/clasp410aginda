@@ -17,12 +17,19 @@ import matplotlib.pyplot as plt
 # Might be compressible? This code is very chunky, would be nice to have less.
 
 
-def solve_heat_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
+def solve_heat(func0, funcub, funclb, xstop=1, tstop=0.2,
+               dx=0.02, dt=0.0002, c2=1, n=False):
     """
     Runs a forward-difference heat solver with fixed ends (Dirichlet BCs).
 
     Parameters
     ----------
+    func0 : function
+        babdsbbadbbds # FIX LATER
+    funcub : function
+        absdhbsabdhasb # FIX LATER
+    funclb : function
+        ansdnhshdsdah # FIX LATER
     xstop : float
         Length of the domain (m).
     tstop : float
@@ -33,6 +40,8 @@ def solve_heat_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
         Time step (s).
     c2 : float
         Thermal diffusivity (m²/s).
+    n : boolean, defaults to False
+        True if Neumann boundary conditions applied, False if Dirichlet.
 
     Returns
     -------
@@ -50,76 +59,37 @@ def solve_heat_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
 
     # set up number of points and grids
     N = int(tstop / dt) + 1
-    M = int(xstop / dx) + 1 
+    M = int(xstop / dx) + 1
     t = np.linspace(0, tstop, N)
     x = np.linspace(0, xstop, M)
 
-    # temp array and starting shape (warm middle, cold ends)
+    # temp array and starting shape (warm middle, cold ends in ex. sol)
     U = np.zeros((M, N))
-    U[:, 0] = 4 * x - 4 * x**2
+    U[:, 0] = func0(x)
+    # Dirichlet boundary conditions (ends suspended in 0C ice in ex. sol)
+    if not n:
+        U[0, :] = funcub(t)
+        U[M-1, :] = funclb(t)
 
     r = c2 * (dt / dx**2)
 
     # main time loop
     for j in range(N - 1):
         U[1:M-1, j+1] = (1 - 2*r) * U[1:M-1, j] + r * (U[2:M, j] + U[:M-2, j])
-        # ends stay fixed at 0°C
-        U[0, j+1] = 0
-        U[M-1, j+1] = 0
+        # Check for Neumann conditions:
+        if n:
+            U[0, j+1] = U[1, j+1]       # left end: zero gradient
+            U[M-1, j+1] = U[M-2, j+1]   # right end: zero gradient
 
     return U, x, t
 
 
-def solve_heat_neumann(xstop=1, tstop=0.2, dx=0.2, dt=0.02, c2=1):
-    """
-    Same idea as above, but with insulated ends (Neumann BCs). NOTE : this was for the hw assingment, I kept it in here though for relevancy.
-
-    Parameters
-    ----------
-    xstop : float
-        Length of the domain (m).
-    tstop : float
-        Total simulation time (s).
-    dx : float
-        Spatial step size (m).
-    dt : float
-        Time step (s).
-    c2 : float
-        Thermal diffusivity (m²/s).
-
-    Returns
-    -------
-    U : ndarray
-        Temperature field [space × time].
-    x : ndarray
-        Spatial grid (m).
-    t : ndarray
-        Time grid (s).
-    """
-    # Check time step size for stability
-    dt_max = dx**2 / (2 * c2)
-    if dt > dt_max:
-        raise ValueError(f"peligroso: dt {dt} must be <= dt_max {dt_max}")
-
-    # grid setup
-    N = int(tstop / dt) + 1
-    M = int(xstop / dx) + 1 
-    t = np.linspace(0, tstop, N)
-    x = np.linspace(0, xstop, M)
-
-    # start with temps warm in middle, cold at ends
-    U = np.zeros((M, N))
-    U[:, 0] = 4 * x - 4 * x**2
-
-    r = c2 * (dt / dx**2)
-
-    # time loop with insulated ends (Neumann BCs)
-    for j in range(N - 1):
-        U[1:M-1, j+1] = (1 - 2*r) * U[1:M-1, j] + r * (U[2:M, j] + U[:M-2, j])
-        U[0, j+1] = U[1, j+1]       # left end: zero gradient
-        U[M-1, j+1] = U[M-2, j+1]   # right end: zero gradient
-
-    return U, x, t
+# Initial and boundary condition functions to pass into solver:
+# rod_diri_0 produces the initial temps on the rod spatially
+def rod_diri_0(x): return (4 * x - 4 * x ** 2)
+# rod_diri_ub and rod_diri_lb produce end-suspended-in-ice
+def rod_diri_ub(t): return np.zeros(t.size)
+def rod_diri_lb(t): return np.zeros(t.size)
 
 
 def plot_heatsolve_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
@@ -130,9 +100,10 @@ def plot_heatsolve_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     temperature vs. time and position.
 
     run with plot_heatsolve_dirichlet()
-    """
+    """    
     # run the solver and set up grids for plotting
-    U, x, t = solve_heat_dirichlet(xstop, tstop, dx, dt, c2)
+    U, x, t = solve_heat(rod_diri_0, rod_diri_ub, rod_diri_lb, xstop, tstop,
+                         dx, dt, c2, n=False)
     T, X = np.meshgrid(t, x, indexing="ij")
 
     # make the plot
@@ -161,7 +132,8 @@ def plot_heatsolve_neumann(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     run with plot_heatsolve_neumann(), NOTE: again same here just for the hw assignment
     """
     # run the solver and set up grids for plotting
-    U, x, t = solve_heat_neumann(xstop, tstop, dx, dt, c2)
+    U, x, t = solve_heat(rod_diri_0, rod_diri_ub, rod_diri_lb, xstop, tstop,
+                         dx, dt, c2, n=True)
     T, X = np.meshgrid(t, x, indexing="ij")
 
     # make the plot
@@ -178,7 +150,6 @@ def plot_heatsolve_neumann(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     # clean layout and show it
     plt.tight_layout()
     plt.show()
-
 
 
 '''
@@ -216,8 +187,10 @@ def plot_comparison(dx=0.02, dt=0.0002, xstop=1, tstop=0.2, c2=1):
         run with plot_comparison()
     """
     # run both solvers to compare fixed vs insulated ends
-    U_dir, x, t = solve_heat_dirichlet(xstop, tstop, dx, dt, c2)
-    U_neu, _, _ = solve_heat_neumann(xstop, tstop, dx, dt, c2)
+    U_dir, x, t = solve_heat(rod_diri_0, rod_diri_ub, rod_diri_lb, xstop,
+                             tstop, dx, dt, c2, n=False)
+    U_neu, _, _ = solve_heat(rod_diri_0, rod_diri_ub, rod_diri_lb, xstop,
+                             tstop, dx, dt, c2, n=True)
 
     # set up grids and color scale
     vmin, vmax = 0, max(U_dir.max(), U_neu.max())
@@ -231,7 +204,7 @@ def plot_comparison(dx=0.02, dt=0.0002, xstop=1, tstop=0.2, c2=1):
     axs[0].set_xlabel("Time (s)")
     axs[0].set_ylabel("Position (m)")
 
-    im2 = axs[1].pcolor(T, X, U_neu.T, cmap="inferno", vmin=vmin, vmax=vmax, 
+    im2 = axs[1].pcolor(T, X, U_neu.T, cmap="inferno", vmin=vmin, vmax=vmax,
                         shading="auto")
     axs[1].set_title("Neumann (Insulated Ends)")
     axs[1].set_xlabel("Time (s)")
@@ -239,12 +212,12 @@ def plot_comparison(dx=0.02, dt=0.0002, xstop=1, tstop=0.2, c2=1):
 
     # adjust layout and colorbar
     plt.subplots_adjust(bottom=0.2, top=0.85, wspace=0.25)
-    cbar = fig.colorbar(im2, ax=axs, orientation="horizontal", fraction=0.05, 
+    cbar = fig.colorbar(im2, ax=axs, orientation="horizontal", fraction=0.05,
                         pad=0.1)
     cbar.set_label("Temperature (°C)")
 
     # add a main title and show it
-    fig.suptitle("Heat Equation: Dirichlet vs Neumann Boundary Conditions", 
+    fig.suptitle("Heat Equation: Dirichlet vs Neumann Boundary Conditions",
                  y=0.98, fontsize=12)
     plt.show()
 
@@ -277,10 +250,11 @@ def validate_heat_solver():
 
         run with validate_heat_solver()
     """
-    
-        # solve the validation case using the Dirichlet solver
-    U_valid, x_valid, t_valid = solve_heat_dirichlet(xstop=1, tstop=0.2, 
-                                                     dx=0.2, dt=0.02, c2=1)
+
+    # solve the validation case using the Dirichlet solver
+    U_valid, x_valid, t_valid = solve_heat(rod_diri_0, rod_diri_ub,
+                                           rod_diri_lb, xstop=1, tstop=0.2,
+                                           dx=0.2, dt=0.02, c2=1)
 
     # print a chunk of the result table to compare with the lab handout
     print("\nValidation Table (approx values):")
@@ -360,6 +334,7 @@ def compare_to_reference():
 
     plt.tight_layout()
     plt.show()
+
 
 # QUESTION 2: Kangerlussuaq Permafrost Model
 
