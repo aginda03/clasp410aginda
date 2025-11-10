@@ -10,25 +10,44 @@ It also runs warming scenarios to see how rising surface temperatures affect act
 
 import numpy as np
 import matplotlib.pyplot as plt
+# Conversion constants for later
+Sec_per_day = 24 * 3600
+Day_per_year = 365
 
-# bunch of fucntions before actual questions, question numbers labeled below
 
-def solve_heat_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
+# Initial and boundary condition functions to pass into solver for ex. sol:
+# rod_diri_0 produces the initial temps on the rod spatially
+def rod_diri_0(x): return (4 * x - 4 * x ** 2)
+# rod_diri_ub and rod_diri_lb produce end-suspended-in-ice
+def rod_diri_ub(t): return np.zeros(t.size)
+def rod_diri_lb(t): return np.zeros(t.size)
+
+
+def solve_heat(func0=rod_diri_0, funcub=rod_diri_ub, funclb=rod_diri_lb, 
+               xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1, n=False):
     """
     Runs a forward-difference heat solver with fixed ends (Dirichlet BCs).
 
     Parameters
     ----------
-    xstop : float
-        Length of the domain (m).
-    tstop : float
-        Total simulation time (s).
-    dx : float
-        Spatial step size (m).
-    dt : float
-        Time step (s).
-    c2 : float
-        Thermal diffusivity (m²/s).
+    func0 : function, defaults ton rod_diri_0
+        Function input of spatial initial conditions
+    funcub : function
+        Function input of upper boundary (Dirichlet conditions)
+    funclb : function
+        Function input of lower boundary (Dirichlet conditions)
+    xstop : float, defaults to 1m
+        Length of the domain.
+    tstop : float, defaults to 0.2s
+        Total simulation time.
+    dx : float, defaults to 0.02m
+        Spatial step size.
+    dt : float, defaults to 0.0002s
+        Time step.
+    c2 : float, defaults to 1(m²/s)
+        Thermal diffusivity.
+    n : boolean, defaults to False
+        True if Neumann boundary conditions applied, False if Dirichlet.
 
     Returns
     -------
@@ -39,85 +58,36 @@ def solve_heat_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     t : ndarray
         Time grid (s).
     """
-       # check that dt isn’t too big or it’ll go unstable
+    # Check that dt isn’t too big or it’ll go unstable
     dt_max = dx**2 / (2 * c2)
     if dt > dt_max:
         raise ValueError(f"peligroso: dt {dt} must be <= dt_max {dt_max}")
 
     # set up number of points and grids
     N = int(tstop / dt) + 1
-    M = int(xstop / dx) + 1 
+    M = int(xstop / dx) + 1
     t = np.linspace(0, tstop, N)
     x = np.linspace(0, xstop, M)
 
-    # temp array and starting shape (warm middle, cold ends)
+    # temp array and starting shape (warm middle, cold ends in ex. sol)
     U = np.zeros((M, N))
-    U[:, 0] = 4 * x - 4 * x**2
+    U[:, 0] = func0(x)
+    # Dirichlet boundary conditions (ends suspended in 0C ice in ex. sol)
+    if not n:
+        U[0, :] = funcub(t)
+        U[M-1, :] = funclb(t)
 
     r = c2 * (dt / dx**2)
 
     # main time loop
     for j in range(N - 1):
         U[1:M-1, j+1] = (1 - 2*r) * U[1:M-1, j] + r * (U[2:M, j] + U[:M-2, j])
-        # ends stay fixed at 0°C
-        U[0, j+1] = 0
-        U[M-1, j+1] = 0
+        # Check for Neumann conditions:
+        if n:
+            U[0, j+1] = U[1, j+1]       # left end: zero gradient
+            U[M-1, j+1] = U[M-2, j+1]   # right end: zero gradient
 
     return U, x, t
-
-
-
-def solve_heat_neumann(xstop=1, tstop=0.2, dx=0.2, dt=0.02, c2=1):
-    """
-    Same idea as above, but with insulated ends (Neumann BCs). NOTE : this was for the hw assingment, I kept it in here though for relevancy.
-
-    Parameters
-    ----------
-    xstop : float
-        Length of the domain (m).
-    tstop : float
-        Total simulation time (s).
-    dx : float
-        Spatial step size (m).
-    dt : float
-        Time step (s).
-    c2 : float
-        Thermal diffusivity (m²/s).
-
-    Returns
-    -------
-    U : ndarray
-        Temperature field [space × time].
-    x : ndarray
-        Spatial grid (m).
-    t : ndarray
-        Time grid (s).
-    """
-        # check time step size for stability
-    dt_max = dx**2 / (2 * c2)
-    if dt > dt_max:
-        raise ValueError(f"peligroso: dt {dt} must be <= dt_max {dt_max}")
-
-    # grid setup
-    N = int(tstop / dt) + 1
-    M = int(xstop / dx) + 1 
-    t = np.linspace(0, tstop, N)
-    x = np.linspace(0, xstop, M)
-
-    # start with temps warm in middle, cold at ends
-    U = np.zeros((M, N))
-    U[:, 0] = 4 * x - 4 * x**2
-
-    r = c2 * (dt / dx**2)
-
-    # time loop with insulated ends (Neumann BCs)
-    for j in range(N - 1):
-        U[1:M-1, j+1] = (1 - 2*r) * U[1:M-1, j] + r * (U[2:M, j] + U[:M-2, j])
-        U[0, j+1] = U[1, j+1]       # left end: zero gradient
-        U[M-1, j+1] = U[M-2, j+1]   # right end: zero gradient
-
-    return U, x, t
-
 
 
 def plot_heatsolve_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
@@ -128,9 +98,10 @@ def plot_heatsolve_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     temperature vs. time and position.
 
     run with plot_heatsolve_dirichlet()
-    """
+    """    
     # run the solver and set up grids for plotting
-    U, x, t = solve_heat_dirichlet(xstop, tstop, dx, dt, c2)
+    U, x, t = solve_heat(rod_diri_0, rod_diri_ub, rod_diri_lb, xstop, tstop,
+                         dx, dt, c2, n=False)
     T, X = np.meshgrid(t, x, indexing="ij")
 
     # make the plot
@@ -149,8 +120,6 @@ def plot_heatsolve_dirichlet(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     plt.show()
 
 
-
-
 def plot_heatsolve_neumann(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     """
     Solves the heat equation (Neumann BCs) and plots the 2D contour.
@@ -161,7 +130,8 @@ def plot_heatsolve_neumann(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     run with plot_heatsolve_neumann(), NOTE: again same here just for the hw assignment
     """
     # run the solver and set up grids for plotting
-    U, x, t = solve_heat_neumann(xstop, tstop, dx, dt, c2)
+    U, x, t = solve_heat(rod_diri_0, rod_diri_ub, rod_diri_lb, xstop, tstop,
+                         dx, dt, c2, n=True)
     T, X = np.meshgrid(t, x, indexing="ij")
 
     # make the plot
@@ -180,7 +150,6 @@ def plot_heatsolve_neumann(xstop=1, tstop=0.2, dx=0.02, dt=0.0002, c2=1):
     plt.show()
 
 
-
 '''
 NOTE : for the hw assingment, just to check energy conservation
 # Just checking, energy in - energy out
@@ -197,6 +166,8 @@ print("Energy change:", energy[-1] - energy[0])
 
 # ==========================================================
 # Homework N-D
+
+
 def plot_comparison(dx=0.02, dt=0.0002, xstop=1, tstop=0.2, c2=1):
     """
     Runs both solvers (Dirichlet + Neumann) and compares them side by side.
@@ -214,8 +185,10 @@ def plot_comparison(dx=0.02, dt=0.0002, xstop=1, tstop=0.2, c2=1):
         run with plot_comparison()
     """
     # run both solvers to compare fixed vs insulated ends
-    U_dir, x, t = solve_heat_dirichlet(xstop, tstop, dx, dt, c2)
-    U_neu, _, _ = solve_heat_neumann(xstop, tstop, dx, dt, c2)
+    U_dir, x, t = solve_heat(rod_diri_0, rod_diri_ub, rod_diri_lb, xstop,
+                             tstop, dx, dt, c2, n=False)
+    U_neu, _, _ = solve_heat(rod_diri_0, rod_diri_ub, rod_diri_lb, xstop,
+                             tstop, dx, dt, c2, n=True)
 
     # set up grids and color scale
     vmin, vmax = 0, max(U_dir.max(), U_neu.max())
@@ -229,29 +202,35 @@ def plot_comparison(dx=0.02, dt=0.0002, xstop=1, tstop=0.2, c2=1):
     axs[0].set_xlabel("Time (s)")
     axs[0].set_ylabel("Position (m)")
 
-    im2 = axs[1].pcolor(T, X, U_neu.T, cmap="inferno", vmin=vmin, vmax=vmax, shading="auto")
+    im2 = axs[1].pcolor(T, X, U_neu.T, cmap="inferno", vmin=vmin, vmax=vmax,
+                        shading="auto")
     axs[1].set_title("Neumann (Insulated Ends)")
     axs[1].set_xlabel("Time (s)")
     axs[1].set_ylabel("Position (m)")
 
     # adjust layout and colorbar
     plt.subplots_adjust(bottom=0.2, top=0.85, wspace=0.25)
-    cbar = fig.colorbar(im2, ax=axs, orientation="horizontal", fraction=0.05, pad=0.1)
+    cbar = fig.colorbar(im2, ax=axs, orientation="horizontal", fraction=0.05,
+                        pad=0.1)
     cbar.set_label("Temperature (°C)")
 
     # add a main title and show it
-    fig.suptitle("Heat Equation: Dirichlet vs Neumann Boundary Conditions", y=0.98, fontsize=12)
+    fig.suptitle("Heat Equation: Dirichlet vs Neumann Boundary Conditions",
+                 y=0.98, fontsize=12)
     plt.show()
 
 
 '''
-With Dirichlet conditions, the wire ends stay at 0°C, so heat flows out until the whole wire cools down.
-With Neumann conditions, the ends are insulated, meaning no heat escapes and the wire slowly evens out but stays warm overall.
-The Neumann case represents a wire with insulated ends where there’s no heat transfer to the surroundings.
+With Dirichlet conditions, the wire ends stay at 0°C, so heat flows out until
+the whole wire cools down. With Neumann conditions, the ends are insulated,
+meaning no heat escapes and the wire slowly evens out but stays warm overall.
+The Neumann case represents a wire with insulated ends where there’s no heat
+transfer to the surroundings.
 '''
 # ==========================================================
 
 # QUESTION 1: Validation of Heat Solver
+
 
 def validate_heat_solver():
     """
@@ -269,9 +248,11 @@ def validate_heat_solver():
 
         run with validate_heat_solver()
     """
-    
-        # solve the validation case using the Dirichlet solver
-    U_valid, x_valid, t_valid = solve_heat_dirichlet( xstop=1,tstop=0.2,dx=0.2, dt=0.02,c2=1)
+
+    # solve the validation case using the Dirichlet solver
+    U_valid, x_valid, t_valid = solve_heat(rod_diri_0, rod_diri_ub,
+                                           rod_diri_lb, xstop=1, tstop=0.2,
+                                           dx=0.2, dt=0.02, c2=1)
 
     # print a chunk of the result table to compare with the lab handout
     print("\nValidation Table (approx values):")
@@ -286,7 +267,8 @@ def validate_heat_solver():
     # make a color plot to see how heat spreads over time
     fig, ax = plt.subplots(figsize=(6, 4))
     T, X = np.meshgrid(t_valid, x_valid, indexing="ij")
-    c = ax.pcolor(T, X, U_valid.T, cmap="inferno", vmin=0, vmax=1, shading="auto")
+    c = ax.pcolor(T, X, U_valid.T, cmap="inferno", vmin=0, vmax=1, 
+                  shading="auto")
 
     # add colorbar and axis labels for clarity
     cbar = fig.colorbar(c, ax=ax, orientation="horizontal", pad=0.15)
@@ -303,7 +285,6 @@ def validate_heat_solver():
     return U_valid, x_valid, t_valid
 
 
-
 def compare_to_reference():
     """
     Compares the validation output to the given reference dataset and
@@ -316,6 +297,8 @@ def compare_to_reference():
     """
 
     # import the reference solution we’re comparing against
+    # Concern here - if saved as a library,
+    # install details need to be outlined in this file
     from test_solution import sol10p3
 
     # run the solver validation automatically
@@ -351,16 +334,16 @@ def compare_to_reference():
     plt.show()
 
 
-
-
 # QUESTION 2: Kangerlussuaq Permafrost Model
 
-
 # ---- Surface temperature function ----
+
+
 t_kanger = np.array([-19.7, -21.0, -17., -8.4, 2.3, 8.4,
                      10.7, 8.5, 3.1, -6.0, -12.0, -16.9])
 
-def temp_kanger(t_days):
+
+def temp_kanger(t_secs):
     """
     Gives Kangerlussuaq’s surface temperature (°C) for a given time in days, gets called in the permafrost solver.
 
@@ -374,6 +357,9 @@ def temp_kanger(t_days):
     temps : ndarray
         Surface temp values (°C).
     """
+    # convert from seconds input into day of the year
+    t_days = t_secs / Sec_per_day % 365
+
     # find the amplitude of the yearly temp swing (how much it varies)
     t_amp = (t_kanger - t_kanger.mean()).max()
 
@@ -381,58 +367,10 @@ def temp_kanger(t_days):
     return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) + t_kanger.mean()
 
 
-def solve_permafrost(xstop=100, years=200, dx=0.5, dt_days=0.5, c2=0.25e-6):
-    """
-    Solves 1D heat diffusion in 100 m of soil with surface temps, gets called in the permafrost runner.
-
-    Parameters
-    ----------
-    xstop : float
-        Depth (m).
-    years : int
-        Total years simulated.
-    dx : float
-        Depth step (m).
-    dt_days : float
-        Time step (days).
-    c2 : float
-        Thermal diffusivity (m²/s).
-
-    Returns
-    -------
-    U : ndarray
-        Temperature field [depth × time].
-    x : ndarray
-        Depth grid (m).
-    t : ndarray
-        Time grid (days).
-    """
-    # convert everything from days to seconds
-    sec_per_day = 24 * 3600
-    dt = dt_days * sec_per_day
-    tstop = years * 365 * sec_per_day
-
-    # check for stability so the solver doesn’t blow up
-    dt_max = dx**2 / (2 * c2)
-    if dt > dt_max:
-        raise ValueError(f"Unstable! dt={dt:.2e} s > dt_max={dt_max:.2e} s")
-
-    # set up grid sizes and arrays
-    N = int(tstop / dt)
-    M = int(xstop / dx) + 1
-    t = np.linspace(0, years * 365, N)  # time in days
-    x = np.linspace(0, xstop, M)
-    U = np.zeros((M, N))
-    r = c2 * dt / dx**2
-
-    # step through time to update temps
-    for j in range(N - 1):
-        U[1:M-1, j+1] = (1 - 2*r) * U[1:M-1, j] + r * (U[2:M, j] + U[:M-2, j])
-        U[0, j+1] = temp_kanger(t[j] % 365)   # surface temp cycles yearly
-        U[M-1, j+1] = 5.0                     # bottom held at 5°C
-
-    return U, x, t
-
+# Create initial conditions for permafrost (uniformly 0 Celsius)
+def permafrost0(x): return np.zeros(x.size)
+# Create Geothermal boundary condition (uniformly 5 Celsius)
+def temp_geothermal(t_days): return np.zeros(t_days.size) + 5
 
 
 def run_permafrost(show_plots=True, years=200):
@@ -461,8 +399,14 @@ def run_permafrost(show_plots=True, years=200):
 
         run with run_permafrost()
     """
-        # run the permafrost simulation
-    U_p, x_p, t_p = solve_permafrost(xstop=100, years=years, dx=0.5, dt_days=0.5)
+    tstop = years * Day_per_year * Sec_per_day  # input years in seconds
+    dt = 0.5 * Sec_per_day  # 0.5 days in seconds
+    c2 = 0.25e-6  # (m²/s)
+
+    # run the permafrost simulation
+    U_p, x_p, t_p = solve_heat(func0=permafrost0, funclb=temp_geothermal,
+                               funcub=temp_kanger, xstop=100, tstop=tstop,
+                               dx=0.5, dt=dt, c2=c2)
 
     # get data from the final simulated year
     loc = int(-365 / 0.5)  # last 365 days (since dt=0.5 days)
@@ -491,17 +435,18 @@ def run_permafrost(show_plots=True, years=200):
     print(f"Temperature range at 100 m depth: {summer[-1]:.2f} to {winter[-1]:.2f} °C")
     print("====================================")
 
-
-
-      # make the plots if the flag is on 
+    # make the plots if the flag is on 
     if show_plots:
         from matplotlib.colors import TwoSlopeNorm
 
         # first plot shows how temperature changes through the ground over time
-        # x-axis is time in years, y-axis is depth (0 m = surface, 100 m = deep soil)
+        # x-axis is time in years, y-axis is depth
+        # (0 m = surface, 100 m = deep soil)
         # color shows temperature, where red is warmer and blue is colder
         fig, ax = plt.subplots(figsize=(7, 4))
-        T_yrs, X_m = np.meshgrid(t_p / 365, x_p, indexing="ij")  # convert time from days to years
+
+        # convert time from days to years
+        T_yrs, X_m = np.meshgrid(t_p / 365, x_p, indexing="ij")
 
         # center the color map around 0°C so freezing is easy to see
         norm_full = TwoSlopeNorm(vcenter=0, vmin=-6, vmax=6)
@@ -520,7 +465,9 @@ def run_permafrost(show_plots=True, years=200):
         plt.show()
 
         # second plot does basically the same thing but zooms in near freezing
-        # this helps visualize where the soil thaws and freezes over time NOTE: just used the first in the report, ended up just changing limits there
+        # this helps visualize where the soil thaws and freezes over time
+        # NOTE: just used the first in the report, 
+        # ended up just changing limits there
         fig, ax_zoom = plt.subplots(figsize=(7, 4))
         norm = TwoSlopeNorm(vcenter=0, vmin=-6, vmax=6)
         c_zoom = ax_zoom.pcolormesh(T_yrs, X_m, U_p.T, cmap="coolwarm",
@@ -540,9 +487,11 @@ def run_permafrost(show_plots=True, years=200):
         plt.tight_layout()
         plt.show()
 
-        # third plot shows temperature vs. depth for just the final simulated year
+        # third plot shows temperature vs. depth
+        # for just the final simulated year
         # summer = red line, winter = blue line
-        # the gap between them near the surface is the active layer that freezes/thaws
+        # the gap between them near the surface
+        # is the active layer that freezes/thaws
         fig, ax2 = plt.subplots(figsize=(5, 6))
         ax2.plot(summer, x_p, label="Summer", color="red")
         ax2.plot(winter, x_p, label="Winter", color="blue")
@@ -565,16 +514,10 @@ def run_permafrost(show_plots=True, years=200):
     return U_p, x_p, t_p, active_depth, permafrost_base
 
 
+# QUESTION 3: Global Warming Scenarios
 
-       
-       
-
-
-
-
-# # QUESTION 3: Global Warming Scenarios
-
-def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, show_plots=True):
+def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, 
+                          show_plots=True):
     """
     Runs the permafrost sim multiple times under different warming offsets.
 
@@ -594,15 +537,18 @@ def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, show_plot
 
         run with run_warming_scenarios()
     """
-        # list to store all the simulation results
+    # list to store all the simulation results
     results = []
 
     # loop through each temperature increase we want to test
     for dT in temp_shifts:
-        # make a new version of the surface temperature function that’s slightly warmer
-        def temp_kanger_shifted(t_days):
+        # make a new version of the surface temperature 
+        # function that’s slightly warmer
+        def temp_kanger_shifted(t_secs):
+            t_days = t_secs / Sec_per_day % 365
             t_amp = (t_kanger - t_kanger.mean()).max()
-            return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) + t_kanger.mean() + dT
+            return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) + \
+                t_kanger.mean() + dT
 
         # temporarily replace the old surface function with the shifted one
         global temp_kanger
@@ -611,12 +557,13 @@ def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, show_plot
 
         # run the permafrost simulation for this warming level (no plots yet)
         print(f"\n=== Running simulation with +{dT:.1f} °C surface warming ===")
-        U_p, x_p, t_p, active, base = run_permafrost(show_plots=False, years=years)
+        U_p, x_p, t_p, active, base = run_permafrost(show_plots=False,
+                                                     years=years)
 
         # store the results so we can print them all together later
         results.append((dT, active, base))
 
-        # restore the original surface temp function so the next run starts clean
+        # restore the original surface temp function so next run starts clean
         temp_kanger = original_temp_kanger
 
     # print out a nice summary table comparing all the runs
@@ -627,23 +574,33 @@ def run_warming_scenarios(temp_shifts=(0.0, 0.5, 1.0, 3.0), years=200, show_plot
         print(f"{dT:8.1f} | {active:17.2f} | {base:21.2f}")
     print("===========================================")
 
-    # make a plot comparing the summer temperature profiles under different warming cases
+    # make a plot comparing the summer temperature profiles 
+    # under different warming cases
     if show_plots:
         colors = ["gold", "orange", "red", "darkred"]
         fig, ax = plt.subplots(figsize=(5, 6))
 
+        tstop = years * Day_per_year * Sec_per_day  # input years in seconds
+        dt = 0.5 * Sec_per_day  # 0.5 days in seconds
+        c2 = 0.25e-6  # (m²/s)
+
         # loop through each scenario and plot the final-year summer profile
         for (dT, _, _), color in zip(results, colors):
-            # re-create the shifted surface function for this temperature offset
-            def temp_kanger_shifted(t_days):
+            # re-create the shifted surface function for new temperature offset
+            def temp_kanger_shifted(t_secs):
+                t_days = t_secs / Sec_per_day % 365
                 t_amp = (t_kanger - t_kanger.mean()).max()
-                return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) + t_kanger.mean() + dT
+                return t_amp * np.sin(np.pi / 180 * t_days - np.pi / 2) \
+                    + t_kanger.mean() + dT
             temp_kanger = temp_kanger_shifted
 
             # run solver again to get temperature field
-            U_p, x_p, t_p = solve_permafrost(years=years)
+            U_p, x_p, t_p = solve_heat(func0=permafrost0, funcub=temp_kanger,
+                                       funclb=temp_geothermal, tstop=tstop,
+                                       xstop=100, dx=0.5, dt=dt, c2=c2)
 
-            # take only the final year to get the summer and winter temperature ranges
+            # take only the final year to get the 
+            # summer and winter temperature ranges
             loc = int(-365 / 0.5)
             winter = U_p[:, loc:].min(axis=1)
             summer = U_p[:, loc:].max(axis=1)
