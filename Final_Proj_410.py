@@ -524,6 +524,9 @@ def validate_panel_temperature():
 
 
 def validate_efficiency():
+    '''
+    same here for efficiency vs temperature
+    '''
     print("\n=== Efficiency Validation ===")
     for T in [20, 35, 50, 65, 80]:
         eff = panel_efficiency(T)
